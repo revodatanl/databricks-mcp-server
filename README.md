@@ -22,11 +22,6 @@ This MCP server provides LLMs a set of read-only tools for interacting with Data
 - Databricks workspace access with appropriate permissions
 - Databricks variables (host & secret)
 
-## Installation
-
-```bash
-pip install databricks-mcp
-```
 
 ### Available Tools
 

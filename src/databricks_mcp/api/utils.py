@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
+from typing import Any, Optional, TypedDict
 
 
 @dataclass
@@ -10,6 +11,12 @@ class AsyncClientConfig:
     max_concurrent_requests: int = 8
     max_retries: int = 5
     base_delay: float = 0.5
+
+
+class ToolCallResponse(TypedDict):
+    success: bool
+    content: Optional[Any]
+    error: Optional[str]
 
 
 @asynccontextmanager
@@ -21,14 +28,14 @@ async def get_async_session():
         yield session, semaphore
 
 
-async def fetch_with_backoff(
+async def get_with_backoff(
     session: aiohttp.ClientSession,
     endpoint: str,
     semaphore: asyncio.Semaphore,
     max_retries: int = 5,
     base_delay: float = 0.5,
-    additional_headers: dict = {},
-) -> dict:
+    additional_headers: dict[str, str] = {},
+) -> dict[str, Any]:
     """
     Asynchronously fetches JSON data from a given URL using an aiohttp ClientSession,
     with automatic retries and exponential backoff on HTTP 429 (Too Many Requests) responses.
@@ -44,7 +51,7 @@ async def fetch_with_backoff(
     }
     headers.update(additional_headers)
     delay = base_delay
-    for attempt in range(max_retries):
+    for _ in range(max_retries):
         async with semaphore:
             async with session.get(url, headers=headers) as response:
                 if response.status == 429:
@@ -60,14 +67,15 @@ async def fetch_with_backoff(
 
 
 def format_toolcall_response(
-    success: bool, content: dict = None, error: Exception = None
-):
+    success: bool, content: Any = None, error: Optional[Exception] = None
+) -> ToolCallResponse:
     """
     Format a tool call response into a standardized dictionary structure.
     """
-    response = {"success": success}
-    if success:
-        response["content"] = content
-    else:
-        response["error"] = str(error)
+    response: ToolCallResponse = {
+        "success": success,
+        "content": content,
+        "error": str(error) if error else None,
+    }
+
     return response

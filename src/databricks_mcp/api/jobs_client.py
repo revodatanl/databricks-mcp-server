@@ -1,23 +1,24 @@
 import asyncio
 import aiohttp
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 from databricks_mcp.api.utils import (
-    fetch_with_backoff,
+    get_with_backoff,
     format_toolcall_response,
     get_async_session,
+    ToolCallResponse,
 )
 
 
 async def _fetch_jobs_from_endpoint(
     session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
-) -> List[str]:
+) -> Dict[str, Any]:
     """Retrieves a list of jobs"""
-    data = await fetch_with_backoff(session, "jobs/list", semaphore)
+    data = await get_with_backoff(session, "jobs/list", semaphore)
     return data
 
 
-async def list_jobs() -> Dict[str, Any]:
+async def list_jobs() -> ToolCallResponse:
     """
     List all jobs in the users workspace
     """
