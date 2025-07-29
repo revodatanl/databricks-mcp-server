@@ -1,12 +1,15 @@
 import asyncio
 import aiohttp
-from typing import List, Dict, Any
+from typing import List, Dict
 from collections import defaultdict
+from databricks_mcp.api.response_masks import get_table_details_mask
 from databricks_mcp.api.utils import (
     get_with_backoff,
     format_toolcall_response,
     get_async_session,
     ToolCallResponse,
+    mask_api_response,
+    JsonData,
 )
 
 
@@ -45,16 +48,6 @@ async def _get_tables_in_schema(
     )
     data = await get_with_backoff(session, endpoint, semaphore)
     return [f"{catalog_name}.{schema_name}.{t['name']}" for t in data.get("tables", [])]
-
-
-async def _get_table_details(
-    session: aiohttp.ClientSession,
-    semaphore: asyncio.Semaphore,
-    full_table_name: str,
-) -> Dict[str, Any]:
-    """Get detailed information about a specific table, accepts a list of tables"""
-    endpoint = f"unity-catalog/tables/{full_table_name}"
-    return await get_with_backoff(session, endpoint, semaphore)
 
 
 async def list_all_tables() -> ToolCallResponse:
@@ -102,6 +95,16 @@ async def list_all_tables() -> ToolCallResponse:
         return format_toolcall_response(success=False, error=e)
 
 
+async def _get_table_details(
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
+    full_table_name: str,
+) -> JsonData:
+    """Get detailed information about a specific table, accepts a list of tables"""
+    endpoint = f"unity-catalog/tables/{full_table_name}"
+    return await get_with_backoff(session, endpoint, semaphore)
+
+
 async def get_tables_details(full_table_names: List[str]) -> ToolCallResponse:
     """
     Get detailed information about multiple tables
@@ -115,26 +118,8 @@ async def get_tables_details(full_table_names: List[str]) -> ToolCallResponse:
                 for table_name in full_table_names
             ]
             tables_data = await asyncio.gather(*table_tasks)
-
-            # Process and filter the results
-            keys_to_include = ["name", "catalog_name", "schema_name", "columns"]
-            result = {
-                "tables": [
-                    {
-                        **t,
-                        "columns": [
-                            {"name": c["name"], "type_text": c["type_text"]}
-                            for c in t["columns"]
-                        ],
-                    }
-                    for t in [
-                        {key: table[key] for key in keys_to_include}
-                        for table in tables_data
-                    ]
-                ]
-            }
-
-            return format_toolcall_response(success=True, content=result)
+            masked_data = mask_api_response(tables_data, get_table_details_mask)
+            return format_toolcall_response(success=True, content=masked_data)
 
     except Exception as e:
         return format_toolcall_response(success=False, error=e)

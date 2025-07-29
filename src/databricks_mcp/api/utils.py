@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional, TypedDict, TypeAlias, Union
 
 
 @dataclass
@@ -79,3 +79,32 @@ def format_toolcall_response(
     }
 
     return response
+
+
+JsonData: TypeAlias = Union[dict[str, Any], list["JsonData"]]
+
+
+def mask_api_response(data: JsonData, mask: dict[str, Any]) -> JsonData:
+    """
+    Recursively filter a nested api json response according to a mask.
+
+    The mask dictionary specifies which keys to keep:
+    - Keys in the mask should be kept in the output.
+    - If a mask key maps to another dict, the function recurses into that sub-dictionary to filter deeply.
+    - If data is list: apply mask to each element in the list.
+    - Non-dict and non-list values are returned as is if they match a mask key.
+    """
+    if isinstance(data, dict) and isinstance(mask, dict):
+        filtered = {}
+        for key, submask in mask.items():
+            # Only keep the key if it exists in input data
+            if key in data:
+                # If mask[key] is a dict, recurse to filter nested structures
+                filtered[key] = mask_api_response(data[key], submask)
+        return filtered
+    elif isinstance(data, list):
+        # Apply the mask recursively to each item in the list
+        return [mask_api_response(item, mask) for item in data]
+    else:
+        # Base case: data is not a dict or list (leaf node), return it as is
+        return data

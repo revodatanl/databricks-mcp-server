@@ -29,7 +29,7 @@ class DatabricksMCPServer(FastMCP):
             description="Retrieve a list of all jobs in the workspace including details",
         )
         async def get_jobs_in_workspace():
-            return await jobs_client.list_jobs()
+            return await jobs_client.get_jobs()
 
 
 def main():
