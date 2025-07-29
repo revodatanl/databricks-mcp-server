@@ -1,6 +1,5 @@
 import asyncio
 import aiohttp
-from typing import List, Dict
 from collections import defaultdict
 from databricks_mcp.api.response_masks import get_table_details_mask
 from databricks_mcp.api.utils import (
@@ -15,8 +14,15 @@ from databricks_mcp.api.utils import (
 
 async def _get_catalogs(
     session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
-) -> List[str]:
-    """Get list of catalogs, only get catalogs that are created by a user"""
+) -> list[str]:
+    """Get list of non-system catalogs.
+
+    Args:
+        session (aiohttp.ClientSession): The HTTP client session
+        semaphore (asyncio.Semaphore): Semaphore for concurrency control
+    Returns:
+        list[str]: List of catalog names excluding system catalogs
+    """
     data = await get_with_backoff(session, "unity-catalog/catalogs", semaphore)
     return [
         c["name"] for c in data.get("catalogs", []) if c["created_by"] != "System user"
@@ -27,8 +33,16 @@ async def _get_schemas_in_catalog(
     session: aiohttp.ClientSession,
     semaphore: asyncio.Semaphore,
     catalog_name: str,
-) -> List[str]:
-    """Get schemas in a catalog excluding information_schema"""
+) -> list[str]:
+    """Get non-system schemas in a catalog.
+
+    Args:
+        session (aiohttp.ClientSession): The HTTP client session
+        semaphore (asyncio.Semaphore): Semaphore for concurrency control
+        catalog_name (str): Name of the catalog to get schemas from
+    Returns:
+        list[str]: List of schema names excluding information_schema
+    """
     endpoint = f"unity-catalog/schemas?catalog_name={catalog_name}"
     data = await get_with_backoff(session, endpoint, semaphore)
     return [
@@ -41,8 +55,18 @@ async def _get_tables_in_schema(
     semaphore: asyncio.Semaphore,
     catalog_name: str,
     schema_name: str,
-) -> List[str]:
-    """Get tables in a schema"""
+) -> list[str]:
+    """Get list of fully qualified table names in a schema.
+
+    Args:
+        session (aiohttp.ClientSession): The HTTP client session
+        semaphore (asyncio.Semaphore): Semaphore for concurrency control
+        catalog_name (str): Name of the catalog containing the schema
+        schema_name (str): Name of the schema to get tables from
+
+    Returns:
+        list[str]: List of fully qualified table names in format catalog.schema.table
+    """
     endpoint = (
         f"unity-catalog/tables?catalog_name={catalog_name}&schema_name={schema_name}"
     )
@@ -51,8 +75,13 @@ async def _get_tables_in_schema(
 
 
 async def list_all_tables() -> ToolCallResponse:
-    """
-    List all tables in all catalogs and schemas
+    """Get a hierarchical view of all tables organized by the three-level namespace: catalog, schema, table.
+
+    Returns:
+        ToolCallResponse: Response object containing:
+            - If successful: Dict mapping catalogs to schemas to table lists
+              Format: {catalog: {schema: [table1, table2, ...]}}
+            - If failed: Error information
     """
     try:
         async with get_async_session() as (session, semaphore):
@@ -81,8 +110,7 @@ async def list_all_tables() -> ToolCallResponse:
             tables_nested = await asyncio.gather(*table_tasks)
 
             # Organize results
-            # Initialize with proper typing
-            result: Dict[str, Dict[str, List[str]]] = defaultdict(
+            result: dict[str, dict[str, list[str]]] = defaultdict(
                 lambda: defaultdict(list)
             )
             for table in (tbl for sublist in tables_nested for tbl in sublist):
@@ -100,16 +128,29 @@ async def _get_table_details(
     semaphore: asyncio.Semaphore,
     full_table_name: str,
 ) -> JsonData:
-    """Get detailed information about a specific table, accepts a list of tables"""
+    """Get detailed information for a single table.
+
+    Args:
+        session (aiohttp.ClientSession): The HTTP client session
+        semaphore (asyncio.Semaphore): Semaphore for concurrency control
+        full_table_name (str): Fully qualified table name in format catalog.schema.table
+
+    Returns:
+        JsonData: JSON response containing table details
+    """
     endpoint = f"unity-catalog/tables/{full_table_name}"
     return await get_with_backoff(session, endpoint, semaphore)
 
 
-async def get_tables_details(full_table_names: List[str]) -> ToolCallResponse:
-    """
-    Get detailed information about multiple tables
-    """
+async def get_tables_details(full_table_names: list[str]) -> ToolCallResponse:
+    """Get detailed information for multiple tables.
 
+    Args:
+        full_table_names (list[str]): List of fully qualified table names in format catalog.schema.table
+
+    Returns:
+        ToolCallResponse
+    """
     try:
         async with get_async_session() as (session, semaphore):
             # Fetch details for all tables concurrently

@@ -11,7 +11,7 @@ class DatabricksMCPServer(FastMCP):
 
     def _register_mcp_tools(self):
         @self.tool(
-            name="get-all-catalogs-schemas-tables-in-workspace",
+            name="get-all-catalogs-schemas-tables",
             description="Get all tables in all catalogs and schemas available in all Unity Catalogs assigned to a Databricks Workspace",
         )
         async def get_all_tables_in_workspace():
@@ -25,11 +25,25 @@ class DatabricksMCPServer(FastMCP):
             return await unity_catalog_client.get_tables_details(full_table_names)
 
         @self.tool(
-            name="get-jobs-in-workspace",
+            name="get-jobs",
             description="Retrieve a list of all jobs in the workspace including details",
         )
         async def get_jobs_in_workspace():
             return await jobs_client.get_jobs()
+
+        @self.tool(
+            name="get-job-details",
+            description="Get job details like settings and tasks by the job id",
+        )
+        async def get_job_details(job_ids: list[int]):
+            return await jobs_client.get_jobs_details(job_ids)
+
+        @self.tool(
+            name="get-job-runs",
+            description="Get the details of the latest job runs by the job id",
+        )
+        async def get_job_runs(job_ids: list[int]):
+            return await jobs_client.get_jobs_runs(job_ids)
 
 
 def main():
