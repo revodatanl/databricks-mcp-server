@@ -20,7 +20,7 @@ class DatabricksMCPServer(FastMCP):
         @self.tool(name="get-table-details")
         async def get_table_details_by_full_tablename(full_table_names: list[str]):
             """Get table details like description and columns from the full three-level namespace catalog.schema.tablename
-            Takes:
+            Args:
                 - full_table_names: List of tables to get details for
             """
             return await unity_catalog_client.get_tables_details(full_table_names)
@@ -33,19 +33,22 @@ class DatabricksMCPServer(FastMCP):
         @self.tool(name="get-job-details")
         async def get_job_details(job_ids: list[int]):
             """Get job details like settings and tasks by the job id
-            Takes:
+            Args:
                 - List of integer job IDs
             """
             return await jobs_client.get_job_details(job_ids)
 
         @self.tool(name="get-job-runs")
-        async def get_job_runs(job_ids: list[int], amount: int = 1):
+        async def get_job_runs(job_ids: list[int], n_recent: int = 1):
             """Get recent job runs by job id
-            Takes:
+            Args:
                 - job_ids: List of job ids for which to get the runs
                 - amount: Amount of runs to get per job, sorted by most recent
             """
-            return await jobs_client.get_job_runs(job_ids, amount)
+            max_n_recent = 5
+            if n_recent > max_n_recent:
+                return f"n_recent cannot exceed {max_n_recent}"
+            return await jobs_client.get_job_runs(job_ids, n_recent)
 
 
 def main():
