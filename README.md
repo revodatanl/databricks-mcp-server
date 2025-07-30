@@ -27,7 +27,7 @@ This MCP server provides LLMs a set of read-only tools for interacting with Data
 
 The server exposes the following MCP tools:
 
-1. **get-all-catalogs-schemas-tables-in-workspace**
+1. **get-all-catalogs-schemas-tables**
    - Returns a comprehensive list of all tables available in all Unity Catalogs assigned to your Databricks Workspace
    - No parameters required
 
@@ -36,9 +36,21 @@ The server exposes the following MCP tools:
    - Parameters:
      - `full_table_names`: List of fully qualified table names (catalog.schema.table)
 
-3. **get-jobs-in-workspace**
-   - Lists all jobs in the workspace with their configurations and details
+3. **get-jobs**
+   - Lists all jobs in the workspace with basic information like id and name
    - No parameters required
+
+4. **get-job-details**
+   - Retrieve job details like settings, configurations and tasks
+   - Parameters:
+     - `job_ids`: List of job ids
+
+5. **get-job-runs**
+   - Get recent job runs and detailed information like duration, parameters, and result
+   - Parameters:
+     - `job_ids`: List of job ids
+     - `n_recent`: Amount of runs to get, ordered by most recent. Default is 1 and is capped at a maximum of 5
+
 
 ## Dependencies
 
