@@ -49,7 +49,7 @@ async def get_jobs() -> ToolCallResponse:
         return format_toolcall_response(success=False, error=e)
 
 
-async def _get_job_details(
+async def _get_single_job_details(
     session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, job_id: int
 ) -> JsonData:
     """Get details for a specific job
@@ -65,7 +65,7 @@ async def _get_job_details(
     return data
 
 
-async def get_jobs_details(job_ids: list[int]) -> ToolCallResponse:
+async def get_job_details(job_ids: list[int]) -> ToolCallResponse:
     """Get detailed information for multiple jobs.
 
     Gets the details for a list of job IDs by making concurrent API requests.
@@ -80,7 +80,8 @@ async def get_jobs_details(job_ids: list[int]) -> ToolCallResponse:
         async with get_async_session() as (session, semaphore):
             # Get details about multiple jobs concurrently
             job_tasks = [
-                _get_job_details(session, semaphore, job_id) for job_id in job_ids
+                _get_single_job_details(session, semaphore, job_id)
+                for job_id in job_ids
             ]
             jobs_data = await asyncio.gather(*job_tasks)
             masked_jobs_data = mask_api_response(jobs_data, get_jobs_details_mask)

@@ -36,7 +36,7 @@ class DatabricksMCPServer(FastMCP):
             Takes:
                 - List of integer job IDs
             """
-            return await jobs_client.get_jobs_details(job_ids)
+            return await jobs_client.get_job_details(job_ids)
 
         @self.tool(name="get-job-runs")
         async def get_job_runs(job_ids: list[int], amount: int = 1):
