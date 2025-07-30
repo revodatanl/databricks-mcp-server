@@ -35,7 +35,7 @@ get_jobs_runs_mask = {
     "run_id": {},
     "creator_user_name": {},
     "state": {"life_cycle_state": {}, "result_state": {}, "state_message": {}},
-    "job_arameters": {"name": {}, "default": {}},
+    "job_parameters": {"name": {}, "default": {}},
     "start_time": {},
     "run_duration": {},
     "run_type": {},
