@@ -107,8 +107,8 @@ async def _get_runs_for_single_job(
     Returns:
         List of job runs
     """
-    data = await get_with_backoff(session, f"jobs/runs/list?job_id{job_id}", semaphore)
-    return data["runs"][:amount]
+    data = await get_with_backoff(session, f"jobs/runs/list?job_id={job_id}", semaphore)
+    return data.get("runs", [])[:amount]
 
 
 async def get_job_runs(job_ids: list[int], amount: int) -> ToolCallResponse:
