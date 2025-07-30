@@ -3,6 +3,8 @@ get_table_details_mask = {
     "schema_name": {},
     "catalog_name": {},
     "comment": {},
+    "created_at": {},
+    "updated_at": {},
     "columns": {"name": {}, "type_text": {}, "comment": {}},
 }
 
