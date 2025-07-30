@@ -3,6 +3,8 @@ get_table_details_mask = {
     "schema_name": {},
     "catalog_name": {},
     "comment": {},
+    "created_at": {},
+    "updated_at": {},
     "columns": {"name": {}, "type_text": {}, "comment": {}},
 }
 
@@ -32,6 +34,7 @@ get_jobs_details_mask = {
 }
 
 get_jobs_runs_mask = {
+    "job_id": {},
     "run_id": {},
     "creator_user_name": {},
     "state": {"life_cycle_state": {}, "result_state": {}, "state_message": {}},
