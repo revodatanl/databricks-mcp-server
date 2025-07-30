@@ -47,7 +47,7 @@ class DatabricksMCPServer(FastMCP):
             """
             max_n_recent = 5
             if n_recent > max_n_recent:
-                return f"n_recent cannot exceed {max_n_recent}"
+                raise ValueError(f"n_recent cannot exceed {max_n_recent}")
             return await jobs_client.get_job_runs(job_ids, n_recent)
 
 
