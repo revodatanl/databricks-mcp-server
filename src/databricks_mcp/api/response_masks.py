@@ -32,14 +32,12 @@ get_jobs_details_mask = {
 }
 
 get_jobs_runs_mask = {
-    "job_id": {},
     "run_id": {},
     "creator_user_name": {},
     "state": {"life_cycle_state": {}, "result_state": {}, "state_message": {}},
     "job_arameters": {"name": {}, "default": {}},
     "start_time": {},
     "run_duration": {},
-    "trigger": {},
     "run_type": {},
     "status": {"state": {}, "termination_details": {"type": {}, "message": {}}},
 }
