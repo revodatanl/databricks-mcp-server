@@ -91,7 +91,10 @@ async def get_jobs_details(job_ids: list[int]) -> ToolCallResponse:
 
 
 async def _get_runs_for_single_job(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, job_id: int, amount: int
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
+    job_id: int,
+    amount: int,
 ) -> JsonData:
     """Get run history for a specific job
 
@@ -121,7 +124,8 @@ async def get_job_runs(job_ids: list[int], amount: int) -> ToolCallResponse:
     try:
         async with get_async_session() as (session, semaphore):
             job_tasks = [
-                _get_runs_for_single_job(session, semaphore, job_id, amount) for job_id in job_ids
+                _get_runs_for_single_job(session, semaphore, job_id, amount)
+                for job_id in job_ids
             ]
             jobs_data = await asyncio.gather(*job_tasks)
             masked_data = mask_api_response(jobs_data, get_jobs_runs_mask)
