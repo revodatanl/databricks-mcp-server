@@ -2,7 +2,6 @@
 
 This MCP server provides LLMs a set of read-only tools for interacting with Databricks workspaces through the MCP protocol. It enables LLMs to retrieve information about assets within your Databricks workspace and use this to generate answers.
 
-
 ## Features
 
 - **Unity Catalog Integration**
@@ -15,15 +14,13 @@ This MCP server provides LLMs a set of read-only tools for interacting with Data
   - Built on top of FastMCP for robust server implementation
   - Uses Async and AioHttp for efficient prallel information retrieval
 
-
 ## Prerequisites
 
-- Python 3.11 or higher
 - Databricks workspace access with appropriate permissions
 - Databricks variables (host & secret)
+- Docker Desktop
 
-
-### Available Tools
+## Available Tools
 
 The server exposes the following MCP tools:
 
@@ -51,37 +48,46 @@ The server exposes the following MCP tools:
      - `job_ids`: List of job ids
      - `n_recent`: Amount of runs to get, ordered by most recent. Default is 1 and is capped at a maximum of 5
 
+## Usage
 
-## Dependencies
+For all use, you need to have Docker running on your machine.
 
-- aiohttp >= 3.12.14
-- async-lru >= 2.0.5
-- mcp[cli] >= 1.9.1
+### Continue.dev
 
-## Environment Setup
-
-### Local Usage
-
-Export environment variables using cli. 
-```
-EXPORT DATABRICKS_HOST=your-workspace-url
-EXPORT DATABRICKS_TOKEN=your-access-token 
-```
-
-### Usage with Continue
-
-Create a `.env` file in your .continue folder root.
+Set the secrets in the Continue.dev UI, or create a `.env` file in your .continue folder root.
 
 ```env
 DATABRICKS_HOST=your-workspace-url
 DATABRICKS_TOKEN=your-access-token
 ```
 
-## Dependencies
+### Claude Desktop
 
-- databricks-sdk>=0.54.0
-- async-lru>=2.0.5
-- python-dotenv>=1.1.0 (for development)
+Go to settings > Developer > Edit Config, and add the following:
+
+```json
+{
+  "mcpServers": {
+    "databricks": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "DATABRICKS_HOST",
+        "-e",
+        "DATABRICKS_TOKEN",
+        "ghcr.io/revodatanl/databricks-mcp-server:latest"
+      ],
+      "env": {
+        "DATABRICKS_HOST": "your-workspace-url",
+        "DATABRICKS_TOKEN": "your-databricks-secret-token"
+      }
+    }
+  }
+}
+```
 
 ## Development
 
@@ -92,8 +98,25 @@ To set up the development environment:
 3. Navigate to the project root
 4. Install dependencies using ```uv sync```
 
+### Dependencies
+
+- Python 3.11 or higher
+- databricks-sdk>=0.54.0
+- async-lru>=2.0.5
+- python-dotenv>=1.1.0 (for development)
+- aiohttp >= 3.12.14
+- async-lru >= 2.0.5
+- mcp[cli] >= 1.9.1
+
+### Local Usage
+
+Export environment variables using cli.
+
+```bash
+EXPORT DATABRICKS_HOST=your-workspace-url
+EXPORT DATABRICKS_TOKEN=your-access-token 
+```
+
 ## License
 
 MIT
-
-
