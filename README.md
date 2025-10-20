@@ -69,7 +69,7 @@ Read more about our vision and use cases [here]().
 
 **Prerequisites:**
 
-- Docker Desktop installed
+- Docker Desktop installed and running
 - Databricks workspace access (host URL and access token)
 
 ### Installation
