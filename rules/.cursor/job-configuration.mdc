@@ -1,0 +1,79 @@
+---
+alwaysApply: false
+description: This is a rule that helps you understand the Databricks Essential Job Configuration Patterns.
+---
+
+* Use a **Job** to orchestrate scheduled or multi-step workflows in Databricks.
+  * Define jobs in YAML under the `resources/jobs/` directory.
+  * Example: Simple Scheduled Job
+
+      ```yaml
+      resources:
+        jobs:
+          daily_data_job:
+            name: "${bundle.target}-daily-data-processing"
+            trigger:
+              periodic:
+                interval: 1
+                unit: DAYS
+                pause_status: UNPAUSED
+            email_notifications:
+              on_failure:
+                - ${workspace.current_user.userName}
+            tasks:
+              - task_key: process_data
+                job_cluster_key: main_cluster
+                notebook_task:
+                  notebook_path: ../src/process_data.ipynb
+                  base_parameters:
+                    environment: ${bundle.target}
+            job_clusters:
+              - job_cluster_key: main_cluster
+                new_cluster:
+                  spark_version: 15.4.x-scala2.12
+                  node_type_id: i3.xlarge
+                  num_workers: 2
+      ```
+
+  * Example: Multi-Task Job with Dependencies
+
+      ```yaml
+      resources:
+        jobs:
+          etl_workflow:
+            name: "${bundle.target}-etl-workflow"
+            trigger:
+              manual: {}
+            tasks:
+              - task_key: extract
+                job_cluster_key: main_cluster
+                notebook_task:
+                  notebook_path: ../src/extract.ipynb
+              - task_key: transform
+                depends_on:
+                  - task_key: extract
+                job_cluster_key: main_cluster
+                notebook_task:
+                  notebook_path: ../src/transform.ipynb
+              - task_key: load
+                depends_on:
+                  - task_key: transform
+                job_cluster_key: main_cluster
+                notebook_task:
+                  notebook_path: ../src/load.ipynb
+            job_clusters:
+              - job_cluster_key: main_cluster
+                new_cluster:
+                  spark_version: 15.4.x-scala2.12
+                  node_type_id: i3.xlarge
+                  autoscale:
+                    min_workers: 1
+                    max_workers: 4
+      ```
+
+  * Essential job fields:
+    * `name`: Display name (should include `"${bundle.target}-job-name"`)
+    * `trigger`: periodic, manual, or continuous
+    * `tasks`: notebook_task, python_wheel_task, pipeline_task, sql_task
+    * `job_clusters`: compute resources
+    * `email_notifications`: on_success, on_failure

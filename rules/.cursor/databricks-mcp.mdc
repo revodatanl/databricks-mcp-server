@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+description: This is a rule that helps you understand the Databricks MCP server and how to use it.
+---
+
+# Databricks MCP Server
+
+## Unity Catalog & Namespacing
+
+- Unity Catalog uses a three-level namespace: `catalog.schema.table`
+- The full name may not always be known by the user
+- Databricks tables use `catalog.schema.table` naming
+
+## Data Discovery & Validation
+
+- When asked about a table or Databricks entity, use `databricks_mcp_server`
+- Prefer answers already in chat history
+- Verify catalogs, schemas, tables, and columns with `revodata_databricks_mcp` before writing or changing code/SQL
+- Happy-path workflow (in order when relevant):
+  1. `get-all-catalogs-schemas-tables` → list Unity Catalog objects
+  2. (Optional) Filter and record chosen `catalog.schema.table`
+  3. `get-table-details` with `full_table_names=["catalog.schema.table", ...]` → confirm columns, types, partitioning, comments
