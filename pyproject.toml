@@ -20,3 +20,8 @@ databricks-mcp = "databricks_mcp.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/databricks_mcp"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+]
