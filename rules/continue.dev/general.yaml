@@ -1,0 +1,79 @@
+name: General
+version: 0.0.6
+alwaysApply: true
+description: This is a rule that helps you understand the general Databricks development rules.
+
+rules:
+  - |
+    ## Core Principles
+    * You are an expert in Databricks workflows and best practices.
+    * Always begin with a simple solution; expand only if the user requests more detail.
+    * Strictly follow the user's question—do not provide more than what is asked.
+    * Prefer Databricks PySpark code over SQL when providing code examples.
+    * If you are unsure about the user's intent or the next step, ask for clarification.
+    * Assume all work is within a Databricks Asset Bundle structure.
+    * Assume the user is working in a Databricks workspace environment.
+    * "Jobs" refer to Databricks workflows.
+    * Always use databricks notebook format in `.py` files, unless working in the `src` folder.
+    * You may assume there is a spark session available in the `spark` variable. There is no need to configure a session, databricks connect handles this.
+    
+    ## Pipeline Creation Workflow
+    * When asked to create a pipeline, provide only the Python code first, then ask if the user wants the pipeline configuration.
+    * Define all pipeline configurations in YAML files located in the `resources` folder.
+
+    ## Unity Catalog & Namespacing
+    * Unity Catalog uses a three-level namespace: `catalog.schema.table`.
+    * The full name may not always be known by the user.
+    * Databricks tables use `catalog.schema.table` naming.
+
+    ## Python Notebooks in Databricks
+    * When creating a Python notebook for Databricks, use a `.py` file and begin with `# Databricks notebook source`.
+    * Separate cells in a Python notebook using the line `# COMMAND ----------`.
+
+    ## Databricks Library Resolution
+    * Before adding or updating any Databricks dependency, call `resolve-library-id` to fetch the latest identifier/version.
+
+    ## Data Discovery & Validation
+    * When asked about a table or Databricks entity, use `databricks_mcp_server`.
+    * Prefer answers already in chat history.
+    * Verify catalogs, schemas, tables, and columns with `revodata_databricks_mcp` before writing or changing code/SQL.
+    * Happy-path workflow (in order when relevant):
+      1. `get-all-catalogs-schemas-tables` → list Unity Catalog objects.
+      2. (Optional) Filter and record chosen `catalog.schema.table`.
+      3. `get-table-details` with `full_table_names=["catalog.schema.table", ...]` → confirm columns, types, partitioning, comments.
+
+    ## Code vs Notebooks Organization
+    * **Production code**: `./src/` as pure functions/modules; no side effects at import.
+    * **Exploration/tests**: Jupyter notebooks in `./notebooks/`.
+    * For each significant `./src/` module, add a companion notebook that imports and smoke-tests it.
+    * Keep notebooks idempotent (no hidden state; deterministic seeds; clear I/O cells).
+
+    ## Notebook Magics and Cell Types
+    * `%md` for narrative.
+    * `%sql` for Databricks/SQL (plain text comments only; no emojis).
+    * `%python` for Python (default).
+    * Prefer short, composable cells; avoid long-running, non-parameterized side effects.
+
+    ## Documentation: Why, What, How
+    * Each feature/module documents:
+      - **Why**: intent / problem.
+      - **What**: API surface (functions, inputs/outputs, constraints).
+      - **How**: implementation notes, tradeoffs, examples.
+    * Put narrative docs in `./docs/` or adjacent `README.md`. Keep docstrings (Google or NumPy style) current.
+    * For meaningful changes, add a lightweight ADR in `./docs/decisions/`.
+
+    ## Implementation Guidelines
+    * **If the task involves Databricks libs or clusters**:
+      - Run `resolve-library-id` and show its result with suggested pins.
+    
+    * **If reading/writing data or generating SQL**:
+      - Use `revodata_databricks_mcp` to call `get-all-catalogs-schemas-tables`, propose candidates, confirm availability.
+      - Call `get-table-details` for each candidate before generating queries or `spark.read.table(...)`.
+    
+    * **For each generated module**:
+      - Include type hints, docstrings with examples, minimal `pytest` tests.
+      - If external deps are needed, update `infra/libraries.yaml` and requirements (cite `resolve-library-id` output).
+    
+    * **In notebooks**:
+      - Use `%md` to explain why/what/how above the relevant code.
+      - Print a short verification summary from `revodata_databricks_mcp` before any `%sql` that references those objects.

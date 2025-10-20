@@ -1,0 +1,65 @@
+---
+description: This is a rule that helps you understand the Databricks DLT Pipeline Configuration.
+alwaysApply: false
+---
+
+* Use a **DLT Pipeline** for declarative ETL, streaming, and data quality enforcement in Databricks.
+* For serverless DLT pipelines, do **not** use the `worker_size` key.
+* Example: Basic DLT Pipeline (Serverless)
+
+  ```yaml
+  resources:
+    pipelines:
+      data_processing_pipeline:
+        name: "${bundle.target}-data-processing-pipeline"
+        catalog: main
+        target: ${bundle.target}_data
+        serverless: true
+        libraries:
+          - notebook:
+              path: ../../src/bronze_layer.py
+          - notebook:
+              path: ../../src/silver_layer.py
+          - notebook:
+              path: ../../src/gold_layer.py
+        configuration:
+          bundle.sourcePath: ${workspace.file_path}/src
+          pipeline.trigger.interval: "1 hour"
+  ```
+
+* For DLT pipelines using traditional clusters, specify clusters under the `clusters` key:
+
+  ```yaml
+  resources:
+    pipelines:
+      streaming_pipeline:
+        name: "${bundle.target}-streaming-pipeline"
+        catalog: main
+        target: ${bundle.target}_streaming
+        libraries:
+          - notebook:
+              path: ../src/streaming_dlt.py
+        clusters:
+          - label: "default"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+  ```
+
+* Essential pipeline fields:
+  * `catalog`: Unity Catalog name (commonly "main")
+  * `target`: Database/schema for output tables
+  * `libraries`: List of DLT notebooks (must use `@dlt.table` decorators)
+  * `configuration`: Pipeline settings and parameters
+* DLT notebooks should define tables using the `@dlt.table` decorator. Example:
+
+  ```python
+  import dl
+  @dlt.table
+  def raw_data():
+      return spark.read.format("json").load("/path/to/data"
+  @dlt.table
+  def clean_data():
+      return dlt.read("raw_data").filter(col("value").isNotNull())
+  ```
+
+* Always use data quality expectations in DLT pipelines where appropriate.

@@ -1,99 +1,224 @@
-# Databricks MCP Server
+# Databricks Unity Catalog MCP Server
 
-This MCP server provides LLMs a set of read-only tools for interacting with Databricks workspaces through the MCP protocol. It enables LLMs to retrieve information about assets within your Databricks workspace and use this to generate answers.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://github.com/revodatanl/databricks-mcp-server/pkgs/container/databricks-mcp-server)
 
+Access your Databricks workspace through Claude and other LLMs. Query Unity Catalog tables, inspect jobs, and retrieve detailed metadata—all through the Model Context Protocol.
+
+Built on the [Databricks SDK](https://github.com/databricks/databricks-sdk-py) to provide read-only access to your workspace through the [Model Context Protocol](https://modelcontextprotocol.io/). Powered by [FastMCP](https://github.com/jlowin/fastmcp) with async/aiohttp for efficient parallel data retrieval.
+
+Read more about our vision and use cases [here]().
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Available Tools](#available-tools)
+  - [Unity Catalog](#unity-catalog)
+  - [Jobs](#jobs)
+- [Quick Start](#quick-start)
+  - [Cursor](#cursor)
+  - [Continue.dev](#continuedev)
+- [Local Development](#local-development)
+- [Dependencies](#dependencies)
+- [License](#license)
+
+---
 
 ## Features
 
-- **Unity Catalog Integration**
-  - List all tables across catalogs and schemas in a Databricks workspace
-  - Retrieve detailed table information including descriptions and column definitions
-- **Jobs Management**
-  - List all jobs in the workspace with detailed information
-- **MCP Compliance**
-  - Implements the Model Control Protocol for standardized interaction
-  - Built on top of FastMCP for robust server implementation
-  - Uses Async and AioHttp for efficient prallel information retrieval
+### Capabilities
 
+> **What you can do:**
+>
+> - Ask Claude to find tables in your Unity Catalog
+> - Inspect job configurations and recent runs
+> - Generate queries based on your schema
 
-## Prerequisites
+### Limitations
 
-- Python 3.11 or higher
-- Databricks workspace access with appropriate permissions
-- Databricks variables (host & secret)
+> **What you can't do:**
+>
+> - Modify tables or jobs (read-only by design)
+> - Execute queries directly (retrieves metadata only)
 
+---
 
-### Available Tools
+## Available Tools
 
-The server exposes the following MCP tools:
+### Unity Catalog
 
-1. **get-all-catalogs-schemas-tables**
-   - Returns a comprehensive list of all tables available in all Unity Catalogs assigned to your Databricks Workspace
-   - No parameters required
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get-all-catalogs-schemas-tables` | List all tables across catalogs and schemas | None |
+| `get-table-details` | Retrieve table descriptions, columns, and metadata | `full_table_names` (list of `catalog.schema.table`) |
 
-2. **get-table-details**
-   - Retrieves detailed information about specific tables
-   - Parameters:
-     - `full_table_names`: List of fully qualified table names (catalog.schema.table)
+### Jobs
 
-3. **get-jobs**
-   - Lists all jobs in the workspace with basic information like id and name
-   - No parameters required
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get-jobs` | List all workspace jobs with IDs and names | None |
+| `get-job-details` | Get job settings, configurations, and tasks | `job_ids` (list of job IDs) |
+| `get-job-runs` | Fetch recent run history with duration, parameters, and results | `job_ids` (list), `n_recent` (1-5, default: 1) |
 
-4. **get-job-details**
-   - Retrieve job details like settings, configurations and tasks
-   - Parameters:
-     - `job_ids`: List of job ids
+---
 
-5. **get-job-runs**
-   - Get recent job runs and detailed information like duration, parameters, and result
-   - Parameters:
-     - `job_ids`: List of job ids
-     - `n_recent`: Amount of runs to get, ordered by most recent. Default is 1 and is capped at a maximum of 5
+## Quick Start
 
+**Prerequisites:**
 
-## Dependencies
+- Docker Desktop installed
+- Databricks workspace access (host URL and access token)
 
-- aiohttp >= 3.12.14
-- async-lru >= 2.0.5
-- mcp[cli] >= 1.9.1
+### Installation
 
-## Environment Setup
+Choose your editor and follow the configuration steps:
 
-### Local Usage
+<details>
+<summary><strong>Cursor</strong></summary>
 
-Export environment variables using cli. 
+<br>
+
+**Step 1:** Add the following configuration to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "databricks": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "DATABRICKS_HOST",
+        "-e",
+        "DATABRICKS_TOKEN",
+        "ghcr.io/revodatanl/databricks-mcp-server:latest"
+      ],
+      "env": {
+        "DATABRICKS_HOST": "${env:DATABRICKS_HOST}",
+        "DATABRICKS_TOKEN": "${env:DATABRICKS_TOKEN}"
+      }
+    }
+  }
+}
 ```
-EXPORT DATABRICKS_HOST=your-workspace-url
-EXPORT DATABRICKS_TOKEN=your-access-token 
-```
 
-### Usage with Continue
+> **Note:** You can either use environment variable references (`${env:VARIABLE}`) or hardcode the values as strings directly in the configuration.
 
-Create a `.env` file in your .continue folder root.
+**Step 2:** Create a `.env` file in your project root with your credentials:
 
 ```env
 DATABRICKS_HOST=your-workspace-url
 DATABRICKS_TOKEN=your-access-token
 ```
 
+**Step 3:** Restart Cursor to load the MCP server.
+
+**Step 4:** Use the [cursor rules](rules/.cursor) to enhance your Databricks development workflow.
+
+[Learn more about MCP in Cursor](https://cursor.com/docs/context/mcp)
+
+</details>
+
+<details>
+<summary><strong>Continue.dev</strong></summary>
+
+<br>
+
+**Step 1:** Add the following configuration to `.continue/mcpServers/databricks-mcp.yaml`:
+
+```yaml
+name: databricks_mcp_server
+version: 0.1.3
+schema: v1
+mcpServers:
+  - name: databricks_mcp_server
+    command: docker
+    args:
+      - run
+      - -i
+      - --rm
+      - -e
+      - DATABRICKS_HOST=${{ inputs.DATABRICKS_HOST }}
+      - -e
+      - DATABRICKS_TOKEN=${{ inputs.DATABRICKS_TOKEN }}
+      - ghcr.io/revodatanl/databricks-mcp-server:latest
+```
+
+**Step 2:** Set your credentials either:
+
+- On the Continue.dev website (recommended for security)
+- Or in a `.env` file in your project root:
+
+  ```env
+  DATABRICKS_HOST=your-workspace-url
+  DATABRICKS_TOKEN=your-access-token
+  ```
+
+**Step 3:** Restart your editor to load the MCP server.
+
+**Step 4:** Use the [Continue.dev rules](rules/.cursor) to enhance your Databricks development workflow.
+
+[Learn more about MCP in Continue.dev](https://docs.continue.dev/customize/deep-dives/mcp)
+
+</details>
+
+---
+
+## Local Development
+
+For contributors and developers who want to run the server locally:
+
+### Setup
+
+1. **Install uv** - Fast Python package installer
+   Follow the [installation guide](https://docs.astral.sh/uv/)
+
+2. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/revodatanl/databricks-mcp-server.git
+   cd databricks-mcp-server
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   uv sync
+   ```
+
+4. **Set environment variables**
+
+   ```bash
+   export DATABRICKS_HOST=your-workspace-url
+   export DATABRICKS_TOKEN=your-access-token
+   ```
+
+5. **Run the server**
+
+   ```bash
+   uv run databricks-mcp
+   ```
+
+---
+
 ## Dependencies
 
-- databricks-sdk>=0.54.0
-- async-lru>=2.0.5
-- python-dotenv>=1.1.0 (for development)
+| Package | Version | Purpose |
+|---------|---------|---------|
+| Python | 3.11+ | Runtime environment |
+| databricks-sdk | >= 0.54.0 | Databricks API client |
+| aiohttp | >= 3.12.14 | Async HTTP requests |
+| async-lru | >= 2.0.5 | Async caching |
+| mcp[cli] | >= 1.9.1 | Model Context Protocol framework |
+| python-dotenv | >= 1.1.0 | Environment variable management (dev) |
 
-## Development
-
-To set up the development environment:
-
-1. Install uv
-2. Clone the repository
-3. Navigate to the project root
-4. Install dependencies using ```uv sync```
+---
 
 ## License
 
-MIT
-
-
+MIT License - see [LICENSE.md](LICENSE.md) for details.

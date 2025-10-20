@@ -1,0 +1,15 @@
+repos:
+  # Ruff for Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.1
+    hooks:
+      # Run the linter
+      - id: ruff
+        # args: [--fix]
+      # # Run the formatter
+      - id: ruff-format
+  # Scan for secrets
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
