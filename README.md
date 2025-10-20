@@ -22,7 +22,6 @@ Read more about our vision and use cases [here]().
   - [Cursor](#cursor)
   - [Continue.dev](#continuedev)
 - [Local Development](#local-development)
-- [Dependencies](#dependencies)
 - [License](#license)
 
 ---
