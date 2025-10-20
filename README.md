@@ -206,19 +206,6 @@ For contributors and developers who want to run the server locally:
 
 ---
 
-## Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| Python | 3.11+ | Runtime environment |
-| databricks-sdk | >= 0.54.0 | Databricks API client |
-| aiohttp | >= 3.12.14 | Async HTTP requests |
-| async-lru | >= 2.0.5 | Async caching |
-| mcp[cli] | >= 1.9.1 | Model Context Protocol framework |
-| python-dotenv | >= 1.1.0 | Environment variable management (dev) |
-
----
-
 ## License
 
 MIT License - see [LICENSE.md](LICENSE.md) for details.
