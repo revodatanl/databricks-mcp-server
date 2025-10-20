@@ -1,0 +1,10 @@
+name: Databricks MCP
+version: 0.0.3
+alwaysApply: true
+description: This is a rule that helps you understand the Databricks MCP server and how to use it.
+
+rules:
+  - |
+    * Databricks tables use a three-level namespace: catalog.schema.table.
+    * When asked about a table or Databricks-related entity, use the `databricks_mcp_server` to answer the question.
+    * If the answer is already available in the chat history, prefer using that information.

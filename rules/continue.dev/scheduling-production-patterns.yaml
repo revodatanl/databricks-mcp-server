@@ -1,0 +1,94 @@
+name: Databricks Scheduling and Production Patterns
+version: 0.0.4
+alwaysApply: false
+description: This is a rule that helps you understand the Databricks Scheduling and Production Patterns for jobs and pipelines.
+
+rules:
+  - |
+    * Use the following patterns for scheduling, notifications, retries, and production integration in Databricks Jobs and Pipelines.
+
+    * **Scheduling Options:**
+      - Daily at 9 AM:
+        ```yaml
+        trigger:
+          periodic:
+            interval: 1
+            unit: DAYS
+          schedule:
+            quartz_cron_expression: "0 0 9 * * ?"
+            timezone_id: "America/New_York"
+        ```
+      - Hourly:
+        ```yaml
+        trigger:
+          periodic:
+            interval: 1
+            unit: HOURS
+        ```
+      - Manual (on demand):
+        ```yaml
+        trigger:
+          manual: {}
+        ```
+
+    * **Notifications and Retries:**
+      - Configure email notifications for job events and set retry logic:
+        ```yaml
+        email_notifications:
+          on_start:
+            - manager@company.com
+          on_success:
+            - team@company.com
+          on_failure:
+            - ${workspace.current_user.userName}
+
+        timeout_seconds: 3600  # 1 hour
+        max_concurrent_runs: 1
+
+        tasks:
+          - task_key: main_task
+            retry_on_timeout: true
+            max_retries: 2
+        ```
+
+    * **Job and Pipeline Integration:**
+      - To orchestrate a pipeline from a job, use the following pattern:
+        ```yaml
+        resources:
+          pipelines:
+            data_pipeline:
+              name: "${bundle.target}-data-pipeline"
+              catalog: main
+              target: ${bundle.target}_processed
+              libraries:
+                - notebook:
+                    path: ../src/dlt_processing.ipynb
+
+          jobs:
+            orchestration_job:
+              name: "${bundle.target}-orchestration"
+              tasks:
+                - task_key: prepare
+                  notebook_task:
+                    notebook_path: ../src/prepare.ipynb
+
+                - task_key: run_pipeline
+                  depends_on:
+                    - task_key: prepare
+                  pipeline_task:
+                    pipeline_id: ${resources.pipelines.data_pipeline.id}
+        ```
+
+    * **Common Cron Expressions:**
+      - `"0 0 9 * * ?"` — Daily at 9 AM
+      - `"0 0 */6 * * ?"` — Every 6 hours
+      - `"0 0 9 * * MON"` — Mondays at 9 AM
+      - `"0 */15 * * * ?"` — Every 15 minutes
+
+    * **Validation Commands:**
+      - Use these commands to validate and deploy your bundle:
+        ```bash
+        databricks bundle validate
+        databricks bundle deploy --target dev
+        databricks bundle run job_name --target dev
+        ```

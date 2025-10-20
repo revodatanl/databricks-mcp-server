@@ -1,0 +1,21 @@
+name: Databricks Jobs vs Pipelines
+version: 0.0.7
+alwaysApply: false
+description: This is a rule that helps you understand the difference between Databricks Jobs and Pipelines.
+
+rules:
+  - |
+    * Use a **Job** for general workflows: data processing, ML training, ETL, scheduled tasks, and multi-step workflows.
+      - "Run a notebook on schedule" → Use a Job
+      - "Multiple steps with dependencies" → Use a Job with multiple tasks
+
+    * Use a **Pipeline** (Delta Live Tables, DLT) for streaming data, data quality enforcement, and declarative ETL.
+      - "Process streaming data with DLT" → Use a Pipeline
+      - "Need data quality checks and auto-recovery" → Use a Pipeline
+
+    * Organize files as follows:
+      ```
+      resources/
+      ├── jobs/           # Scheduled workflows, ML training
+      └── pipelines/      # DLT streaming/batch processing
+      ```
