@@ -1,19 +1,21 @@
 import asyncio
-import aiohttp
 from collections import defaultdict
+
+import aiohttp
+
 from databricks_mcp.api.response_masks import get_table_details_mask
 from databricks_mcp.api.utils import (
-    get_with_backoff,
+    JsonData,
+    ToolCallResponse,
     format_toolcall_response,
     get_async_session,
-    ToolCallResponse,
+    get_with_backoff,
     mask_api_response,
-    JsonData,
 )
 
 
 async def _get_catalogs(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
+    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore,
 ) -> list[str]:
     """Get list of non-system catalogs.
 
@@ -64,7 +66,8 @@ async def _get_tables_in_schema(
         catalog_name (str): Name of the catalog containing the schema
         schema_name (str): Name of the schema to get tables from
 
-    Returns:
+    Returns
+    -------
         list[str]: List of fully qualified table names in format catalog.schema.table
     """
     endpoint = (
@@ -77,7 +80,8 @@ async def _get_tables_in_schema(
 async def list_all_tables() -> ToolCallResponse:
     """Get a hierarchical view of all tables organized by the three-level namespace: catalog, schema, table.
 
-    Returns:
+    Returns
+    -------
         ToolCallResponse: Response object containing:
             - If successful: Dict mapping catalogs to schemas to table lists
               Format: {catalog: {schema: [table1, table2, ...]}}
@@ -98,7 +102,7 @@ async def list_all_tables() -> ToolCallResponse:
             # Create catalog-schema pairs
             catalog_schema_pairs = [
                 (catalog, schema)
-                for catalog, schemas in zip(catalogs, schemas_per_catalog)
+                for catalog, schemas in zip(catalogs, schemas_per_catalog, strict=False)
                 for schema in schemas
             ]
 
@@ -111,7 +115,7 @@ async def list_all_tables() -> ToolCallResponse:
 
             # Organize results
             result: dict[str, dict[str, list[str]]] = defaultdict(
-                lambda: defaultdict(list)
+                lambda: defaultdict(list),
             )
             for table in (tbl for sublist in tables_nested for tbl in sublist):
                 catalog_name, schema_name, table_name = table.split(".")
@@ -135,7 +139,8 @@ async def _get_table_details(
         semaphore (asyncio.Semaphore): Semaphore for concurrency control
         full_table_name (str): Fully qualified table name in format catalog.schema.table
 
-    Returns:
+    Returns
+    -------
         JsonData: JSON response containing table details
     """
     endpoint = f"unity-catalog/tables/{full_table_name}"
@@ -148,7 +153,8 @@ async def get_tables_details(full_table_names: list[str]) -> ToolCallResponse:
     Args:
         full_table_names (list[str]): List of fully qualified table names in format catalog.schema.table
 
-    Returns:
+    Returns
+    -------
         ToolCallResponse
     """
     try:
