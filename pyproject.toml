@@ -2,11 +2,10 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-
 [project]
 name = "databricks-mcp"
 version = "0.1.0"
-description = "(Unofficial) read-only Databricks MCP server"
+description = "(Unofficial) read-only metadata-only Databricks MCP server"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -24,4 +23,44 @@ packages = ["src/databricks_mcp"]
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 130
+extend-exclude = ["scratch"]
+builtins = []
+
+[tool.ruff.lint]
+pydocstyle.convention = "numpy"
+external = ["DOC"]
+select = ["ALL"]
+ignore = [
+    "BLE001",  # "Do not catch blind exception: `Exception`"
+    "D100",    # "Missing docstring in public module"
+    "D104",    # "Missing docstring in public package"
+    "D203",    # "One blank line required before class docstring" - should be disabled by default
+    "D213",    # "Multi-line docstring summary should start at the second line" - should be disabled by default
+    "D400",    # First line should end with a period
+    "D401",    # First line of docstring should be in imperative mood
+    "E501",    # "Line too long"
+    "EM102",   # "Exception must not use an f-string literal, assign to variable first"
+    "ERA001",  # "Found commented out code"
+    "EXE002",  # "File is executable, but does not have a shebang"
+    "FBT001",  # "Boolean positional arg in function definition.
+    "FBT002",  # "Boolean default value in function definition."
+    "FBT003",  # "Boolean positional value in function call."
+    "FIX002",  # "Line contains TODO, consider resolving the issue"
+    "INP001",  # "Checks for packages that are missing an __init__.py file."
+    "ISC001",  # "Implicit string concatenation" - conflicts with the formatter
+    "N812",    # "Lowercase `functions` imported as non-lowercase `F`
+    "PLR0913", # "Too many arguments defined in function"
+    "PLR2004", # "Magic value used in comparison, consider replacing with a constant variable"
+    "RET504",  # "Unnecessary assignment to {name} before return statement"
+    "S101",    # "Use of `assert` detected"
+    "S608",    # Possible SQL injection vector through string-based query construction
+    "T201",    # "`print` found"
+    "TD002",   # "Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+    "TD003",   # "Missing issue link for this TODO"
+    "TRY003",  # "Avoid specifying long messages outside the exception class"
 ]

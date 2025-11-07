@@ -1,22 +1,24 @@
 import asyncio
+
 import aiohttp
+
 from databricks_mcp.api.response_masks import (
-    get_jobs_mask,
     get_jobs_details_mask,
+    get_jobs_mask,
     get_jobs_runs_mask,
 )
 from databricks_mcp.api.utils import (
-    get_with_backoff,
+    JsonData,
+    ToolCallResponse,
     format_toolcall_response,
     get_async_session,
-    ToolCallResponse,
+    get_with_backoff,
     mask_api_response,
-    JsonData,
 )
 
 
 async def _get_jobs_from_endpoint(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
+    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore,
 ) -> JsonData:
     """Get a list of jobs from the jobs/list endpoint.
 
@@ -24,7 +26,8 @@ async def _get_jobs_from_endpoint(
         session: The aiohttp client session
         semaphore: Semaphore for rate limiting requests
 
-    Returns:
+    Returns
+    -------
         List of jobs from the API response
     """
     data = await get_with_backoff(session, "jobs/list", semaphore)
@@ -36,7 +39,9 @@ async def get_jobs() -> ToolCallResponse:
 
     Gets all jobs from the jobs/list endpoint and masks the response data according
     to the jobs mask.
-    Returns:
+
+    Returns
+    -------
         ToolCallResponse
     """
     try:
@@ -50,7 +55,7 @@ async def get_jobs() -> ToolCallResponse:
 
 
 async def _get_single_job_details(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, job_id: int
+    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, job_id: int,
 ) -> JsonData:
     """Get details for a specific job
 
@@ -73,7 +78,8 @@ async def get_job_details(job_ids: list[int]) -> ToolCallResponse:
     Args:
         job_ids: List of job IDs to get details for
 
-    Returns:
+    Returns
+    -------
         ToolCallResponse
     """
     try:
@@ -104,7 +110,8 @@ async def _get_runs_for_single_job(
         semaphore: Semaphore for rate limiting requests
         job_id: ID of the job to get runs for
 
-    Returns:
+    Returns
+    -------
         List of job runs
     """
     data = await get_with_backoff(session, f"jobs/runs/list?job_id={job_id}", semaphore)
@@ -119,7 +126,8 @@ async def get_job_runs(job_ids: list[int], amount: int) -> ToolCallResponse:
     Args:
         job_ids: List of job IDs to get run history for
 
-    Returns:
+    Returns
+    -------
         ToolCallResponse
     """
     try:

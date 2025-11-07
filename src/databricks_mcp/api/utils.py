@@ -1,31 +1,41 @@
-import os
 import asyncio
-import aiohttp
-from dataclasses import dataclass
+import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Optional, TypedDict, TypeAlias, Union
+from dataclasses import dataclass
+from typing import Any, TypeAlias, TypedDict
+
+import aiohttp
 
 
 @dataclass
 class AsyncClientConfig:
+    """Configuration for async HTTP client."""
+
     max_concurrent_requests: int = 8
     max_retries: int = 5
     base_delay: float = 0.5
 
 
 class ToolCallResponse(TypedDict):
+    """Response structure for MCP tool calls."""
+
     success: bool
-    content: Optional[Any]
-    error: Optional[str]
+    content: Any | None
+    error: str | None
 
 
 @asynccontextmanager
-async def get_async_session():
-    """Context manager for Unity Catalog session handling"""
+async def get_async_session() -> AsyncIterator[tuple[aiohttp.ClientSession, asyncio.Semaphore]]:
+    """Context manager for Unity Catalog session handling."""
     config = AsyncClientConfig()
     semaphore = asyncio.Semaphore(config.max_concurrent_requests)
     async with aiohttp.ClientSession() as session:
         yield session, semaphore
+
+
+class MaxRetriesExceededError(Exception):
+    """Raised when maximum retries are exceeded."""
 
 
 async def get_with_backoff(
@@ -34,15 +44,23 @@ async def get_with_backoff(
     semaphore: asyncio.Semaphore,
     max_retries: int = 5,
     base_delay: float = 0.5,
-    additional_headers: dict[str, str] = {},
+    additional_headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """
-    Asynchronously fetches JSON data from a given URL using an aiohttp ClientSession,
-    with automatic retries and exponential backoff on HTTP 429 (Too Many Requests) responses.
+    Asynchronously fetches JSON data from a given URL using an aiohttp ClientSession.
+
+    Includes automatic retries and exponential backoff on HTTP 429 (Too Many Requests) responses.
     """
+    if additional_headers is None:
+        additional_headers = {}
     databricks_host = os.getenv("DATABRICKS_HOST")
     databricks_token = os.getenv("DATABRICKS_TOKEN")
-    assert databricks_host is not None and databricks_token is not None
+    missing_host_msg = "DATABRICKS_HOST environment variable is not set"
+    if databricks_host is None:
+        raise ValueError(missing_host_msg)
+    missing_auth_msg = "DATABRICKS_TOKEN environment variable is not set"
+    if databricks_token is None:
+        raise ValueError(missing_auth_msg)
 
     url = f"{databricks_host}/api/2.1/{endpoint}"
     headers = {
@@ -52,26 +70,23 @@ async def get_with_backoff(
     headers.update(additional_headers)
     delay = base_delay
     for _ in range(max_retries):
-        async with semaphore:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 429:
-                    print(
-                        f"429 Too Many Requests for {url}. Retrying in {delay} seconds..."
-                    )
-                    await asyncio.sleep(delay)
-                    delay *= 2  # Exponential backoff
-                    continue
-                response.raise_for_status()
-                return await response.json()
-    raise Exception(f"Max retries {max_retries} exceeded for URL: {url}")
+        async with semaphore, session.get(url, headers=headers) as response:
+            if response.status == 429:
+                print(
+                    f"429 Too Many Requests for {url}. Retrying in {delay} seconds...",
+                )
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+                continue
+            response.raise_for_status()
+            return await response.json()
+    raise MaxRetriesExceededError(f"Max retries {max_retries} exceeded for URL: {url}")
 
 
 def format_toolcall_response(
-    success: bool, content: Any = None, error: Optional[Exception] = None
+    success: bool, content: object | None = None, error: Exception | None = None,
 ) -> ToolCallResponse:
-    """
-    Format a tool call response into a standardized dictionary structure.
-    """
+    """Format a tool call response into a standardized dictionary structure."""
     response: ToolCallResponse = {
         "success": success,
         "content": content,
@@ -81,7 +96,7 @@ def format_toolcall_response(
     return response
 
 
-JsonData: TypeAlias = Union[dict[str, Any], list["JsonData"]]
+JsonData: TypeAlias = dict[str, Any] | list["JsonData"]
 
 
 def mask_api_response(data: JsonData, mask: dict[str, Any]) -> JsonData:
@@ -102,9 +117,8 @@ def mask_api_response(data: JsonData, mask: dict[str, Any]) -> JsonData:
                 # If mask[key] is a dict, recurse to filter nested structures
                 filtered[key] = mask_api_response(data[key], submask)
         return filtered
-    elif isinstance(data, list):
+    if isinstance(data, list):
         # Apply the mask recursively to each item in the list
         return [mask_api_response(item, mask) for item in data]
-    else:
-        # Base case: data is not a dict or list (leaf node), return it as is
-        return data
+    # Base case: data is not a dict or list (leaf node), return it as is
+    return data
