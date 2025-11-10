@@ -1,9 +1,10 @@
 import asyncio
+import json
 from collections import defaultdict
+from pathlib import Path
 
 import aiohttp
 
-from databricks_mcp.api.response_masks import get_table_details_mask
 from databricks_mcp.api.utils import (
     JsonData,
     ToolCallResponse,
@@ -13,9 +14,16 @@ from databricks_mcp.api.utils import (
     mask_api_response,
 )
 
+# Load mask from JSON file
+_MASKS_DIR = Path(__file__).parent / "masks"
+
+with (_MASKS_DIR / "get_table_details_mask.json").open() as f:
+    get_table_details_mask = json.load(f)
+
 
 async def _get_catalogs(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore,
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
 ) -> list[str]:
     """Get list of non-system catalogs.
 
@@ -26,9 +34,7 @@ async def _get_catalogs(
         list[str]: List of catalog names excluding system catalogs
     """
     data = await get_with_backoff(session, "unity-catalog/catalogs", semaphore)
-    return [
-        c["name"] for c in data.get("catalogs", []) if c["created_by"] != "System user"
-    ]
+    return [c["name"] for c in data.get("catalogs", []) if c["created_by"] != "System user"]
 
 
 async def _get_schemas_in_catalog(
@@ -47,9 +53,7 @@ async def _get_schemas_in_catalog(
     """
     endpoint = f"unity-catalog/schemas?catalog_name={catalog_name}"
     data = await get_with_backoff(session, endpoint, semaphore)
-    return [
-        s["name"] for s in data.get("schemas", []) if s["name"] != "information_schema"
-    ]
+    return [s["name"] for s in data.get("schemas", []) if s["name"] != "information_schema"]
 
 
 async def _get_tables_in_schema(
@@ -70,9 +74,7 @@ async def _get_tables_in_schema(
     -------
         list[str]: List of fully qualified table names in format catalog.schema.table
     """
-    endpoint = (
-        f"unity-catalog/tables?catalog_name={catalog_name}&schema_name={schema_name}"
-    )
+    endpoint = f"unity-catalog/tables?catalog_name={catalog_name}&schema_name={schema_name}"
     data = await get_with_backoff(session, endpoint, semaphore)
     return [f"{catalog_name}.{schema_name}.{t['name']}" for t in data.get("tables", [])]
 
@@ -93,24 +95,16 @@ async def list_all_tables() -> ToolCallResponse:
             catalogs = await _get_catalogs(session, semaphore)
 
             # Get schemas for each catalog
-            schema_tasks = [
-                _get_schemas_in_catalog(session, semaphore, catalog)
-                for catalog in catalogs
-            ]
+            schema_tasks = [_get_schemas_in_catalog(session, semaphore, catalog) for catalog in catalogs]
             schemas_per_catalog = await asyncio.gather(*schema_tasks)
 
             # Create catalog-schema pairs
             catalog_schema_pairs = [
-                (catalog, schema)
-                for catalog, schemas in zip(catalogs, schemas_per_catalog, strict=False)
-                for schema in schemas
+                (catalog, schema) for catalog, schemas in zip(catalogs, schemas_per_catalog, strict=False) for schema in schemas
             ]
 
             # Get tables for each schema
-            table_tasks = [
-                _get_tables_in_schema(session, semaphore, catalog, schema)
-                for catalog, schema in catalog_schema_pairs
-            ]
+            table_tasks = [_get_tables_in_schema(session, semaphore, catalog, schema) for catalog, schema in catalog_schema_pairs]
             tables_nested = await asyncio.gather(*table_tasks)
 
             # Organize results
@@ -160,10 +154,7 @@ async def get_tables_details(full_table_names: list[str]) -> ToolCallResponse:
     try:
         async with get_async_session() as (session, semaphore):
             # Fetch details for all tables concurrently
-            table_tasks = [
-                _get_table_details(session, semaphore, table_name)
-                for table_name in full_table_names
-            ]
+            table_tasks = [_get_table_details(session, semaphore, table_name) for table_name in full_table_names]
             tables_data = await asyncio.gather(*table_tasks)
             masked_data = mask_api_response(tables_data, get_table_details_mask)
             return format_toolcall_response(success=True, content=masked_data)

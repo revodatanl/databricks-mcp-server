@@ -1,0 +1,26 @@
+{
+  "job_id": {},
+  "name": {},
+  "creator_user_name": {},
+  "run_as_user_name": {},
+  "settings": {
+    "continuous": {
+      "pause_status": {}
+    },
+    "deployment": {
+      "kind": {}
+    },
+    "format": {},
+    "parameters": {
+      "default": {},
+      "name": {}
+    },
+    "schedule": {
+      "pause_status": {},
+      "quartz_cron_expression": {},
+      "timezone_id": {}
+    },
+    "tasks": []
+  }
+}
+
