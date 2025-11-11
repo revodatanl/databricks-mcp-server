@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import aiohttp
+from rapidfuzz import process
 
 from databricks_mcp.api.utils import (
     ToolCallResponse,
@@ -171,3 +172,56 @@ async def get_tables_details(full_table_names: list[str]) -> ToolCallResponse:
             return format_toolcall_response(success=True, content=tables_data)
     except Exception as e:
         return format_toolcall_response(success=False, error=e)
+
+
+async def _get_all_tables() -> list[dict]:
+    """
+    Helper function to retrieve all tables from all catalogs and schemas.
+
+    Returns
+    -------
+    list[dict]
+        List of all tables with their full_name, or empty list if error occurs.
+    """
+    catalogs_response = await get_catalogs()
+    if not catalogs_response["success"] or not catalogs_response["content"]:
+        return []
+
+    catalog_names = [catalog["name"] for catalog in catalogs_response["content"]]
+    schemas_response = await get_schemas_in_catalogs(catalog_names)
+    if not schemas_response["success"] or not schemas_response["content"]:
+        return []
+
+    catalog_schemas = [schema["full_name"] for schema in schemas_response["content"]]
+    tables_response = await get_tables_in_catalogs_schemas(catalog_schemas)
+    if not tables_response["success"]:
+        return []
+    all_tables = [table["full_name"] for table in tables_response["content"]]
+    return all_tables
+
+
+async def find_tables_by_name(search_term: str, limit: int = 10) -> list[tuple[str, float]]:
+    """
+    Find tables by name using fuzzy matching.
+
+    Parameters
+    ----------
+    search_term : str
+        The search string to match against table names.
+    limit : int, optional
+        Maximum number of results to return. Default is 10.
+
+    Returns
+    -------
+    list[tuple[str, float]]
+        A list of tuples containing (table_name, similarity_score) for the top matches,
+        sorted by similarity score (highest first). Scores range from 0 to 100.
+    """
+    all_tables = await _get_all_tables()
+    if not all_tables:
+        return []
+
+    # Extract top matches with similarity scores
+    matches = process.extract(search_term, all_tables, limit=limit)
+
+    return matches

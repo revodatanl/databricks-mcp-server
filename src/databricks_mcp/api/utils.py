@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any, TypeAlias, TypedDict
 
 import aiohttp
-from toon_format import encode
 
 
 @dataclass
@@ -90,7 +89,6 @@ def format_toolcall_response(
     error: Exception | None = None,
 ) -> ToolCallResponse:
     """Format a tool call response into a standardized dictionary structure that gets fed into the LLM."""
-    content = encode(content) if content else None
     response: ToolCallResponse = {
         "success": success,
         "content": content,

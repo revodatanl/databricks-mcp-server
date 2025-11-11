@@ -12,6 +12,7 @@ dependencies = [
     "aiohttp>=3.12.14",
     "async-lru>=2.0.5",
     "mcp[cli]>=1.9.1",
+    "rapidfuzz>=3.14.3",
 ]
 
 [project.scripts]
