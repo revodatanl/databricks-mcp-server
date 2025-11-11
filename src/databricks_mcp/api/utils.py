@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, TypeAlias, TypedDict
 
 import aiohttp
+from toon_format import encode
 
 
 @dataclass
@@ -84,15 +85,17 @@ async def get_with_backoff(
 
 
 def format_toolcall_response(
-    success: bool, content: object | None = None, error: Exception | None = None,
+    success: bool,
+    content: object | None = None,
+    error: Exception | None = None,
 ) -> ToolCallResponse:
-    """Format a tool call response into a standardized dictionary structure."""
+    """Format a tool call response into a standardized dictionary structure that gets fed into the LLM."""
+    content = encode(content) if content else None
     response: ToolCallResponse = {
         "success": success,
         "content": content,
         "error": str(error) if error else None,
     }
-
     return response
 
 
