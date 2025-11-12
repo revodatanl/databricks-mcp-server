@@ -1,0 +1,28 @@
+{
+    "mcpServers": {
+      "databricks-remote": {
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "-e",
+          "DATABRICKS_HOST",
+          "-e",
+          "DATABRICKS_TOKEN",
+          "ghcr.io/revodatanl/databricks-mcp-server:latest"
+        ],
+        "env": {
+          "DATABRICKS_HOST": "${env:DATABRICKS_HOST}",
+          "DATABRICKS_TOKEN": "${env:DATABRICKS_TOKEN}"
+        }
+      },
+      "databricks-local": {
+      "command": "/bin/zsh",
+      "args": [
+        "-lc",
+        "set -a; source .env; uv run databricks-mcp"
+      ]
+    }
+  }
+}
