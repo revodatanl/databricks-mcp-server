@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from pathlib import Path
 
 import aiohttp
@@ -27,6 +28,13 @@ with (_MASKS_DIR / "tables_mask.json").open() as f:
 
 with (_MASKS_DIR / "table_details_mask.json").open() as f:
     table_details_mask = json.load(f)
+
+# In-memory cache for table listings
+_table_cache: dict[str, list[str] | float | None] = {
+    "tables": [],
+    "timestamp": None,
+}
+CACHE_TTL_SECONDS = 600  # 10 minutes
 
 
 async def _get_catalogs_from_endpoint(session: aiohttp.ClientSession, semaphore: asyncio.Semaphore) -> list[str]:
@@ -174,14 +182,14 @@ async def get_tables_details(full_table_names: list[str]) -> ToolCallResponse:
         return format_toolcall_response(success=False, error=e)
 
 
-async def _get_all_tables() -> list[dict]:
+async def _get_all_tables() -> list[str]:
     """
     Helper function to retrieve all tables from all catalogs and schemas.
 
     Returns
     -------
-    list[dict]
-        List of all tables with their full_name, or empty list if error occurs.
+    list[str]
+        List of all table names (full_name format), or empty list if error occurs.
     """
     catalogs_response = await get_catalogs()
     if not catalogs_response["success"] or not catalogs_response["content"]:
@@ -200,9 +208,51 @@ async def _get_all_tables() -> list[dict]:
     return all_tables
 
 
-async def find_tables_by_name(search_term: str, limit: int = 10) -> list[tuple[str, float]]:
+async def _get_all_tables_cached(force_refresh: bool = False) -> list[str]:
     """
-    Find tables by name using fuzzy matching.
+    Get all tables with in-memory caching support.
+
+    The cache is valid for 10 minutes. After expiration, the next call will
+    refresh the cache from the Databricks API.
+
+    Parameters
+    ----------
+    force_refresh : bool, optional
+        If True, bypass the cache and force a refresh from the API.
+        Default is False.
+
+    Returns
+    -------
+    list[str]
+        List of all table names (full_name format), or empty list if error occurs.
+    """
+    current_time = time.time()
+    cache_timestamp = _table_cache["timestamp"]
+    cached_tables = _table_cache["tables"]
+
+    # Check if cache is valid
+    if not force_refresh and cache_timestamp is not None and current_time - cache_timestamp < CACHE_TTL_SECONDS and cached_tables:
+        return cached_tables
+
+    # Refresh cache
+    all_tables = await _get_all_tables()
+    _table_cache["tables"] = all_tables
+    _table_cache["timestamp"] = current_time
+
+    return all_tables
+
+
+async def find_tables_by_name(
+    search_term: str,
+    limit: int = 10,
+    force_refresh: bool = False,
+) -> list[tuple[str, float]]:
+    """
+    Find tables by name using fuzzy matching with in-memory caching.
+
+    Tables are cached for 10 minutes to improve performance. The first call
+    will fetch all tables from the API (may take several seconds), but
+    subsequent calls within the cache window will be nearly instantaneous.
 
     Parameters
     ----------
@@ -210,6 +260,9 @@ async def find_tables_by_name(search_term: str, limit: int = 10) -> list[tuple[s
         The search string to match against table names.
     limit : int, optional
         Maximum number of results to return. Default is 10.
+    force_refresh : bool, optional
+        If True, bypass the cache and fetch fresh data from the API.
+        Default is False.
 
     Returns
     -------
@@ -217,7 +270,7 @@ async def find_tables_by_name(search_term: str, limit: int = 10) -> list[tuple[s
         A list of tuples containing (table_name, similarity_score) for the top matches,
         sorted by similarity score (highest first). Scores range from 0 to 100.
     """
-    all_tables = await _get_all_tables()
+    all_tables = await _get_all_tables_cached(force_refresh)
     if not all_tables:
         return []
 
