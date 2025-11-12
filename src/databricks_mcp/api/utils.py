@@ -84,15 +84,16 @@ async def get_with_backoff(
 
 
 def format_toolcall_response(
-    success: bool, content: object | None = None, error: Exception | None = None,
+    success: bool,
+    content: object | None = None,
+    error: Exception | None = None,
 ) -> ToolCallResponse:
-    """Format a tool call response into a standardized dictionary structure."""
+    """Format a tool call response into a standardized dictionary structure that gets fed into the LLM."""
     response: ToolCallResponse = {
         "success": success,
         "content": content,
         "error": str(error) if error else None,
     }
-
     return response
 
 

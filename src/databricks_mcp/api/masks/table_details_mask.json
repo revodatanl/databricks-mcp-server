@@ -1,0 +1,15 @@
+{
+  "name": {},
+  "schema_name": {},
+  "catalog_name": {},
+  "table_type": {},
+  "comment": {},
+  "created_at": {},
+  "updated_at": {},
+  "columns": {
+    "name": {},
+    "type_text": {},
+    "comment": {}
+  }
+}
+

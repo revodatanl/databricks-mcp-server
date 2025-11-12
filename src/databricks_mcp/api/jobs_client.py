@@ -1,12 +1,9 @@
 import asyncio
+import json
+from pathlib import Path
 
 import aiohttp
 
-from databricks_mcp.api.response_masks import (
-    get_jobs_details_mask,
-    get_jobs_mask,
-    get_jobs_runs_mask,
-)
 from databricks_mcp.api.utils import (
     JsonData,
     ToolCallResponse,
@@ -16,9 +13,22 @@ from databricks_mcp.api.utils import (
     mask_api_response,
 )
 
+# Load masks from JSON files
+_MASKS_DIR = Path(__file__).parent / "masks"
+
+with (_MASKS_DIR / "jobs_mask.json").open() as f:
+    jobs_mask = json.load(f)
+
+with (_MASKS_DIR / "jobs_details_mask.json").open() as f:
+    jobs_details_mask = json.load(f)
+
+with (_MASKS_DIR / "jobs_runs_mask.json").open() as f:
+    jobs_runs_mask = json.load(f)
+
 
 async def _get_jobs_from_endpoint(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore,
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
 ) -> JsonData:
     """Get a list of jobs from the jobs/list endpoint.
 
@@ -31,7 +41,8 @@ async def _get_jobs_from_endpoint(
         List of jobs from the API response
     """
     data = await get_with_backoff(session, "jobs/list", semaphore)
-    return data["jobs"]
+    masked_data = mask_api_response(data, jobs_mask)["jobs"]
+    return masked_data
 
 
 async def get_jobs() -> ToolCallResponse:
@@ -47,15 +58,16 @@ async def get_jobs() -> ToolCallResponse:
     try:
         async with get_async_session() as (session, semaphore):
             jobs = await _get_jobs_from_endpoint(session, semaphore)
-            masked_data = mask_api_response(jobs, get_jobs_mask)
-            return format_toolcall_response(success=True, content=masked_data)
+            return format_toolcall_response(success=True, content=jobs)
 
     except Exception as e:
         return format_toolcall_response(success=False, error=e)
 
 
 async def _get_single_job_details(
-    session: aiohttp.ClientSession, semaphore: asyncio.Semaphore, job_id: int,
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
+    job_id: int,
 ) -> JsonData:
     """Get details for a specific job
 
@@ -67,7 +79,8 @@ async def _get_single_job_details(
         Dict containing job details
     """
     data = await get_with_backoff(session, f"jobs/get?job_id={job_id}", semaphore)
-    return data
+    masked_data = mask_api_response(data, jobs_details_mask)
+    return masked_data
 
 
 async def get_job_details(job_ids: list[int]) -> ToolCallResponse:
@@ -85,13 +98,9 @@ async def get_job_details(job_ids: list[int]) -> ToolCallResponse:
     try:
         async with get_async_session() as (session, semaphore):
             # Get details about multiple jobs concurrently
-            job_tasks = [
-                _get_single_job_details(session, semaphore, job_id)
-                for job_id in job_ids
-            ]
+            job_tasks = [_get_single_job_details(session, semaphore, job_id) for job_id in job_ids]
             jobs_data = await asyncio.gather(*job_tasks)
-            masked_jobs_data = mask_api_response(jobs_data, get_jobs_details_mask)
-            return format_toolcall_response(success=True, content=masked_jobs_data)
+            return format_toolcall_response(success=True, content=jobs_data)
 
     except Exception as e:
         return format_toolcall_response(success=False, error=e)
@@ -115,7 +124,9 @@ async def _get_runs_for_single_job(
         List of job runs
     """
     data = await get_with_backoff(session, f"jobs/runs/list?job_id={job_id}", semaphore)
-    return data.get("runs", [])[:amount]
+    masked_data = mask_api_response(data, jobs_runs_mask)
+    runs = masked_data.get("runs", [])
+    return runs[:amount]
 
 
 async def get_job_runs(job_ids: list[int], amount: int) -> ToolCallResponse:
@@ -132,13 +143,9 @@ async def get_job_runs(job_ids: list[int], amount: int) -> ToolCallResponse:
     """
     try:
         async with get_async_session() as (session, semaphore):
-            job_tasks = [
-                _get_runs_for_single_job(session, semaphore, job_id, amount)
-                for job_id in job_ids
-            ]
+            job_tasks = [_get_runs_for_single_job(session, semaphore, job_id, amount) for job_id in job_ids]
             jobs_data = await asyncio.gather(*job_tasks)
-            masked_data = mask_api_response(jobs_data, get_jobs_runs_mask)
-            return format_toolcall_response(success=True, content=masked_data)
+            return format_toolcall_response(success=True, content=jobs_data)
 
     except Exception as e:
         return format_toolcall_response(success=False, error=e)
