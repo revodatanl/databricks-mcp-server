@@ -33,3 +33,4 @@ jobs:
       - name: Push Docker image
         run: |
           docker push ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.tag }}
+          docker push ghcr.io/${{ github.repository }}:latest
