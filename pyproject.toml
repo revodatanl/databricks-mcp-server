@@ -1,3 +1,7 @@
+[tool.bandit]
+exclude_dirs = ["tests", "notebooks"]
+skips = []
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
